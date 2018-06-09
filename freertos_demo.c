@@ -224,7 +224,7 @@ main(void)
     //    }
     //}
 
-    if(BT_Controller_TaskInit() != 0)
+    if(BT_Controller_Init() != 0)
     {
     	while(1)
     	{

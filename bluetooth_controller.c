@@ -11,10 +11,12 @@
 
 int data[3];
 
-static void BT_Controller_Task(void *pvParameters)
+extern void BT_Controller_ISR(void)
 {
-	while(1)
-	{
+	//while(1)
+	//{
+		UARTIntClear(UART1_BASE, UART_INT_RX);
+
  		if(UARTCharsAvail(UART1_BASE) == true)
 		{
 			//while(UARTCharsAvail(UART1_BASE))
@@ -62,10 +64,10 @@ static void BT_Controller_Task(void *pvParameters)
 			UARTprintf("Horizontal Data: %d\n", horizontal_joystick_data);
 			UARTprintf("Vertical Data  : %d\n", vertical_joystick_data);
 		}
-	}
+	//}
 }
 
-uint32_t BT_Controller_TaskInit(void)
+uint32_t BT_Controller_Init(void)
 {
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_UART1);
@@ -79,14 +81,16 @@ uint32_t BT_Controller_TaskInit(void)
 	GPIOPinTypeUART(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
 
 	UARTEnable(UART1_BASE);
+	UARTIntEnable(UART1_BASE, UART_INT_RX);
+	UARTIntRegister(UART1_BASE, BT_Controller_ISR);
 
 	vertical_joystick_data = 0;
 	horizontal_joystick_data = 0;
 
-	if(xTaskCreate(BT_Controller_Task, (const portCHAR *)"Bluetooth_Controller", BTCONTROLLERSTACKSIZE, NULL, tskIDLE_PRIORITY + PRIORITY_BT_CONTROLLER_TASK, NULL) != pdTRUE)
-	{
-		return(1);
-	}
+	//if(xTaskCreate(BT_Controller_Task, (const portCHAR *)"Bluetooth_Controller", BTCONTROLLERSTACKSIZE, NULL, tskIDLE_PRIORITY + PRIORITY_BT_CONTROLLER_TASK, NULL) != pdTRUE)
+	//{
+	//	return(1);
+	//}
 
 	return(0);
 }

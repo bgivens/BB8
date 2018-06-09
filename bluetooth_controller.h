@@ -25,6 +25,7 @@
 int32_t vertical_joystick_data;
 int32_t horizontal_joystick_data;
 
-extern uint32_t BT_Controller_TaskInit(void);
+extern void BT_Controller_ISR(void);
+extern uint32_t BT_Controller_Init(void);
 
 #endif /* BLUETOOTH_CONTROLLER_H_ */
