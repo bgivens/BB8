@@ -17,8 +17,8 @@ static void BT_Controller_Task(void *pvParameters)
 	{
  		if(UARTCharsAvail(UART1_BASE) == true)
 		{
-			while(UARTCharsAvail(UART1_BASE))
-			{
+			//while(UARTCharsAvail(UART1_BASE))
+			//{
 				data[0] = UARTCharGetNonBlocking(UART1_BASE);
 				//Waiting for next character to come in. The TM4C123XL is fast enough where it's done processing
 				//the first character before the second one arrives, making parsing the data potentially difficult
@@ -58,8 +58,7 @@ static void BT_Controller_Task(void *pvParameters)
 					vertical_joystick_data = vertical_joystick_data - 100;
 					vertical_joystick_data = -vertical_joystick_data;
 				}
-			}
-			//UARTprintf("%d\n", char_count);
+			//}
 			UARTprintf("Horizontal Data: %d\n", horizontal_joystick_data);
 			UARTprintf("Vertical Data  : %d\n", vertical_joystick_data);
 		}
