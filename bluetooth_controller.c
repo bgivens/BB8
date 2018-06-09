@@ -9,6 +9,8 @@
 
 #define BTCONTROLLERSTACKSIZE		128
 
+int data[3];
+
 static void BT_Controller_Task(void *pvParameters)
 {
 	while(1)
@@ -17,9 +19,49 @@ static void BT_Controller_Task(void *pvParameters)
 		{
 			while(UARTCharsAvail(UART1_BASE))
 			{
-				vertical_joystick_data = UARTCharGetNonBlocking(UART1_BASE);
-				UARTprintf("%d\n", vertical_joystick_data);
+				data[0] = UARTCharGetNonBlocking(UART1_BASE);
+				//Waiting for next character to come in. The TM4C123XL is fast enough where it's done processing
+				//the first character before the second one arrives, making parsing the data potentially difficult
+				while(UARTCharsAvail(UART1_BASE)!=true)
+				{
+				}
+				data[1] = UARTCharGetNonBlocking(UART1_BASE);
+				while(UARTCharsAvail(UART1_BASE)!=true)
+				{
+				}
+				data[2] = UARTCharGetNonBlocking(UART1_BASE);
+
+				horizontal_joystick_data = (data[0]-48)*100+(data[1]-48)*10+(data[2]-48);
+				if(horizontal_joystick_data > 100) //TODO:Refactor code so that negative integers can be send from controller side, and dealt with appropriately
+				{								   //Rather than acting like 0-100 is positive and 101-200 is negative
+					horizontal_joystick_data = horizontal_joystick_data - 100;
+					horizontal_joystick_data = -horizontal_joystick_data;
+				}
+
+				//Waiting for other joystick data
+				while(UARTCharsAvail(UART1_BASE)!=true)
+				{
+				}
+				data[0] = UARTCharGetNonBlocking(UART1_BASE);
+				while(UARTCharsAvail(UART1_BASE)!=true)
+				{
+				}
+				data[1] = UARTCharGetNonBlocking(UART1_BASE);
+				while(UARTCharsAvail(UART1_BASE)!=true)
+				{
+				}
+				data[2] = UARTCharGetNonBlocking(UART1_BASE);
+
+				vertical_joystick_data = (data[0]-48)*100+(data[1]-48)*10+(data[2]-48);
+				if(vertical_joystick_data > 100)
+				{
+					vertical_joystick_data = vertical_joystick_data - 100;
+					vertical_joystick_data = -vertical_joystick_data;
+				}
 			}
+			//UARTprintf("%d\n", char_count);
+			UARTprintf("Horizontal Data: %d\n", horizontal_joystick_data);
+			UARTprintf("Vertical Data  : %d\n", vertical_joystick_data);
 		}
 	}
 }
