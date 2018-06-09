@@ -13,58 +13,56 @@ int data[3];
 
 extern void BT_Controller_ISR(void)
 {
-	//while(1)
-	//{
-		UARTIntClear(UART1_BASE, UART_INT_RX);
+	UARTIntClear(UART1_BASE, UART_INT_RX);
 
- 		if(UARTCharsAvail(UART1_BASE) == true)
+ 	if(UARTCharsAvail(UART1_BASE) == true)
+	{
+		data[0] = UARTCharGetNonBlocking(UART1_BASE);
+
+		//Waiting for next character to come in. The TM4C123XL is fast enough where it's done processing
+		//the first character before the second one arrives, making parsing the data potentially difficult
+		while(UARTCharsAvail(UART1_BASE)!=true)
 		{
-			//while(UARTCharsAvail(UART1_BASE))
-			//{
-				data[0] = UARTCharGetNonBlocking(UART1_BASE);
-				//Waiting for next character to come in. The TM4C123XL is fast enough where it's done processing
-				//the first character before the second one arrives, making parsing the data potentially difficult
-				while(UARTCharsAvail(UART1_BASE)!=true)
-				{
-				}
-				data[1] = UARTCharGetNonBlocking(UART1_BASE);
-				while(UARTCharsAvail(UART1_BASE)!=true)
-				{
-				}
-				data[2] = UARTCharGetNonBlocking(UART1_BASE);
-
-				horizontal_joystick_data = (data[0]-48)*100+(data[1]-48)*10+(data[2]-48);
-				if(horizontal_joystick_data > 100) //TODO:Refactor code so that negative integers can be send from controller side, and dealt with appropriately
-				{								   //Rather than acting like 0-100 is positive and 101-200 is negative
-					horizontal_joystick_data = horizontal_joystick_data - 100;
-					horizontal_joystick_data = -horizontal_joystick_data;
-				}
-
-				//Waiting for other joystick data
-				while(UARTCharsAvail(UART1_BASE)!=true)
-				{
-				}
-				data[0] = UARTCharGetNonBlocking(UART1_BASE);
-				while(UARTCharsAvail(UART1_BASE)!=true)
-				{
-				}
-				data[1] = UARTCharGetNonBlocking(UART1_BASE);
-				while(UARTCharsAvail(UART1_BASE)!=true)
-				{
-				}
-				data[2] = UARTCharGetNonBlocking(UART1_BASE);
-
-				vertical_joystick_data = (data[0]-48)*100+(data[1]-48)*10+(data[2]-48);
-				if(vertical_joystick_data > 100)
-				{
-					vertical_joystick_data = vertical_joystick_data - 100;
-					vertical_joystick_data = -vertical_joystick_data;
-				}
-			//}
-			UARTprintf("Horizontal Data: %d\n", horizontal_joystick_data);
-			UARTprintf("Vertical Data  : %d\n", vertical_joystick_data);
 		}
-	//}
+		data[1] = UARTCharGetNonBlocking(UART1_BASE);
+		while(UARTCharsAvail(UART1_BASE)!=true)
+		{
+		}
+		data[2] = UARTCharGetNonBlocking(UART1_BASE);
+
+		horizontal_joystick_data = (data[0]-48)*100+(data[1]-48)*10+(data[2]-48);
+		if(horizontal_joystick_data > 100) //TODO:Refactor code so that negative integers can be send from controller side, and dealt with appropriately
+		{								   //Rather than acting like 0-100 is positive and 101-200 is negative
+			horizontal_joystick_data = horizontal_joystick_data - 100;
+			horizontal_joystick_data = -horizontal_joystick_data;
+		}
+
+		//Waiting for other joystick data
+		while(UARTCharsAvail(UART1_BASE)!=true)
+		{
+		}
+		data[0] = UARTCharGetNonBlocking(UART1_BASE);
+
+		while(UARTCharsAvail(UART1_BASE)!=true)
+		{
+		}
+		data[1] = UARTCharGetNonBlocking(UART1_BASE);
+
+		while(UARTCharsAvail(UART1_BASE)!=true)
+		{
+		}
+		data[2] = UARTCharGetNonBlocking(UART1_BASE);
+
+		vertical_joystick_data = (data[0]-48)*100+(data[1]-48)*10+(data[2]-48);
+		if(vertical_joystick_data > 100)
+		{
+			vertical_joystick_data = vertical_joystick_data - 100;
+			vertical_joystick_data = -vertical_joystick_data;
+		}
+
+		UARTprintf("Horizontal Data: %d\n", horizontal_joystick_data);
+		UARTprintf("Vertical Data  : %d\n", vertical_joystick_data);
+	}
 }
 
 uint32_t BT_Controller_Init(void)
@@ -86,11 +84,6 @@ uint32_t BT_Controller_Init(void)
 
 	vertical_joystick_data = 0;
 	horizontal_joystick_data = 0;
-
-	//if(xTaskCreate(BT_Controller_Task, (const portCHAR *)"Bluetooth_Controller", BTCONTROLLERSTACKSIZE, NULL, tskIDLE_PRIORITY + PRIORITY_BT_CONTROLLER_TASK, NULL) != pdTRUE)
-	//{
-	//	return(1);
-	//}
 
 	return(0);
 }
