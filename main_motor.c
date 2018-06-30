@@ -1,26 +1,11 @@
 /*
- * servo.c
+ * main_motor.c
  *
  *  Created on: Mar 1, 2018
- *      Author: Brandon
+ *      Author: Brandon Givens
  */
 
-#include <stdbool.h>
-#include <stdint.h>
-#include "inc/hw_memmap.h"
-#include "inc/hw_types.h"
-#include "driverlib/gpio.h"
-#include "driverlib/rom.h"
-#include "driverlib/pwm.h"
-#include "driverlib/sysctl.h"
-#include "driverlib/pin_map.h"
-#include "utils/uartstdio.h"
-#include "priorities.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "queue.h"
-#include "semphr.h"
-#include "servo.h"
+#include <main_motor.h>
 
 uint32_t ui32SysClock;
 
@@ -29,40 +14,50 @@ uint32_t ui32SysClock;
 // The stack size for the LED toggle task.
 //
 //*****************************************************************************
-#define SERVOTASKSTACKSIZE        	128         // Stack size in words
-#define PWM_FREQUENCY 				55
+#define MAINMOTORTASKSTACKSIZE        	128         // Stack size in words
+#define PWM_FREQUENCY 					55
 volatile uint32_t ui32Load;
 volatile uint32_t ui32PWMClock;
 volatile uint8_t ui8Adjust = 83;
 volatile uint8_t ui8Adjust_interval = 5;
 
-static void ServoTask(void *pvParameters)
+int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+static void MainMotorTask(void *pvParameters)
 {
     //delay 5 seconds
     while(1)
     {
-    	if(ui8Adjust > 111)
+    	//TODO: Check if if-statements can be optimized
+    	ui8Adjust = vertical_joystick_data;
+    	if(vertical_joystick_data > 0)
     	{
-    		ui8Adjust_interval = -10;
-    		ui8Adjust = 111;
+        	PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, ui8Adjust);
+        	PWMPulseWidthSet(PWM0_BASE, PWM_OUT_3, 0);
     	}
-    	if(ui8Adjust < 45)
+    	else if(vertical_joystick_data < 0)
     	{
-    		ui8Adjust_interval = 10;
-    		ui8Adjust = 45;
+    		PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 0);
+    		PWMPulseWidthSet(PWM0_BASE, PWM_OUT_3, ui8Adjust);
     	}
-    	ui8Adjust = ui8Adjust + ui8Adjust_interval;
-    	PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, ui8Adjust * ui32Load / 1000);
-    	vTaskDelay(250);
+    	else if(vertical_joystick_data == 0)
+    	{
+    		PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 0);
+    		PWMPulseWidthSet(PWM0_BASE, PWM_OUT_3, 0);
+    	}
+
+    	vTaskDelay(100);
     }
 }
 
-uint32_t ServoTaskInit(void)
+uint32_t MainMotorTaskInit(void)
 {
 	//
     // Set the PWM clock to the system clock.
     //
-    //SysCtlPWMClockSet(SYSCTL_PWMDIV_1);
     SysCtlPWMClockSet(SYSCTL_PWMDIV_64);
 
     //
@@ -84,20 +79,24 @@ uint32_t ServoTaskInit(void)
     // This is necessary if your part supports GPIO pin function muxing.
     // Consult the data sheet to see which functions are allocated per pin.
     //
-    GPIOPinConfigure(GPIO_PB6_M0PWM0);
+    GPIOPinConfigure(GPIO_PB4_M0PWM2);
+    GPIOPinConfigure(GPIO_PB5_M0PWM3);
+
 
     //
     // Configure the PWM function for this pin.
     // Consult the data sheet to see which functions are allocated per pin.
     //
-    GPIOPinTypePWM(GPIO_PORTB_BASE, GPIO_PIN_6);
+    GPIOPinTypePWM(GPIO_PORTB_BASE, GPIO_PIN_4);
+    GPIOPinTypePWM(GPIO_PORTB_BASE, GPIO_PIN_5);
 
     //
     // Configure the PWM0 to count up/down without synchronization.
     //
     ui32PWMClock = SysCtlClockGet() / 64;
     ui32Load = (ui32PWMClock / PWM_FREQUENCY) - 1;
-    PWMGenConfigure(PWM0_BASE, PWM_GEN_0, PWM_GEN_MODE_DOWN);
+    PWMGenConfigure(PWM0_BASE, PWM_GEN_1, PWM_GEN_MODE_DOWN | PWM_GEN_MODE_NO_SYNC |
+    		PWM_GEN_MODE_DB_NO_SYNC);
 
     //
     // Set the PWM period to 250Hz.  To calculate the appropriate parameter
@@ -107,7 +106,7 @@ uint32_t ServoTaskInit(void)
     // In this case you get: (1 / 250Hz) * 16MHz = 64000 cycles.  Note that
     // the maximum period you can set is 2^16.
     //
-    PWMGenPeriodSet(PWM0_BASE, PWM_GEN_0, ui32Load);
+    PWMGenPeriodSet(PWM0_BASE, PWM_GEN_1, 400);
 
     //
     // Set PWM0 to a duty cycle of 25%.  You set the duty cycle as a function
@@ -115,23 +114,31 @@ uint32_t ServoTaskInit(void)
     // PWMGenPeriodGet() function.  For this example the PWM will be high for
     // 25% of the time or 16000 clock ticks (64000 / 4).
     //
-
-    PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, ui8Adjust * ui32Load / 1000);
+    PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, 0);
+    PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 0);
 
     //
     // Enable the PWM0 Bit0 (PD0) output signal.
     //
-    PWMOutputState(PWM0_BASE, PWM_OUT_0_BIT, true);
+    PWMOutputState(PWM0_BASE, PWM_OUT_2_BIT | PWM_OUT_3_BIT, true);
+    //PWMOutputState(PWM0_BASE, PWM_OUT_2_BIT, true);
+
 
     //
     // Enable the PWM generator block.
     //
-    PWMGenEnable(PWM0_BASE, PWM_GEN_0);
+    PWMGenEnable(PWM0_BASE, PWM_GEN_1);
+
+    //Configuring GPIO Port C for motor driver enable pins
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);
+    GPIOPinTypeGPIOOutput(GPIO_PORTC_BASE, GPIO_PIN_4 | GPIO_PIN_5);
+    GPIOPinWrite(GPIO_PORTC_BASE, GPIO_PIN_4 | GPIO_PIN_5, GPIO_PIN_4 | GPIO_PIN_5);
+
 
     //
     // Create the LED task.
     //
-    if(xTaskCreate(ServoTask, (const portCHAR *)"Servo", SERVOTASKSTACKSIZE, NULL, tskIDLE_PRIORITY + PRIORITY_SERVO_TASK, NULL) != pdTRUE)
+    if(xTaskCreate(MainMotorTask, (const portCHAR *)"Servo", MAINMOTORTASKSTACKSIZE, NULL, tskIDLE_PRIORITY + PRIORITY_MAINMOTOR_TASK, NULL) != pdTRUE)
     {
     	return(1);
     }

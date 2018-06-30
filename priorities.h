@@ -32,7 +32,7 @@
 //*****************************************************************************
 #define PRIORITY_SWITCH_TASK    2
 #define PRIORITY_LED_TASK       2
-#define PRIORITY_SERVO_TASK		1
+#define PRIORITY_MAINMOTOR_TASK		1
 #define PRIORITY_LSM9DS0_TASK	1
 #define PRIORITY_BT_CONTROLLER_TASK	1
 
